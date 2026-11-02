@@ -3,56 +3,59 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>OmniScale-Fold XR | Human Heart Cell Atlas v2 & 3D Visible Human Twin</title>
+  <title>OmniScale-Fold XR | Real 3D .GLB Heart & Heart Cell Atlas v2 Twin</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
-    :root { --bg: rgba(5,10,24,0.90); --bdr: rgba(0,240,255,0.42); --cyan: #00f0ff; --pink: #ff2a85; --green: #00ff9d; --gold: #ffb800; }
+    :root { --bg: rgba(5,10,24,0.88); --bdr: rgba(0,240,255,0.42); --cyan: #00f0ff; --pink: #ff2a85; --green: #00ff9d; --gold: #ffb800; }
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
-    body, html { width: 100vw; height: 100vh; overflow: hidden; background: radial-gradient(circle at 50% 46%, #131c31 0%, #020617 82%); font-family: system-ui, -apple-system, sans-serif; color: #f8fafc; touch-action: none; }
+    body, html { width: 100vw; height: 100vh; overflow: hidden; background: radial-gradient(circle at 50% 46%, #131c31 0%, #020617 82%); font-family: system-ui, -apple-system, sans-serif; color: #f8fafc; touch-action: none; overscroll-behavior: none; }
     #ar-video { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 1; display: none; }
     #webgl-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 2; touch-action: none; }
     #pin-overlay { position: fixed; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
-    .anat-pin { position: absolute; transform: translate(-50%, -50%); background: rgba(2,6,23,0.88); border: 1px solid var(--cyan); color: #fff; font-size: 8px; font-weight: 800; padding: 2px 5px; border-radius: 5px; white-space: nowrap; box-shadow: 0 2px 8px #000; }
+    .anat-pin { position: absolute; transform: translate(-50%, -50%); background: rgba(2,6,23,0.88); border: 1px solid rgba(0,240,255,0.55); color: #f8fafc; font-size: 8px; font-weight: 800; padding: 2px 6px; border-radius: 5px; white-space: nowrap; pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,0.75); }
+    .anat-pin::before { content: ""; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); margin-right: 4px; vertical-align: middle; }
+    #sam-reticle { position: fixed; top: 48%; left: 50%; transform: translate(-50%, -50%); width: 210px; height: 210px; border: 2px dashed var(--cyan); border-radius: 18px; z-index: 3; pointer-events: none; display: none; box-shadow: 0 0 30px rgba(0,240,255,0.3); }
     .top-hud { position: fixed; top: 5px; left: 5px; right: 5px; z-index: 10; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
     .hud-row { display: flex; justify-content: space-between; align-items: center; gap: 4px; pointer-events: auto; }
-    .brand-pill { background: var(--bg); border: 1px solid var(--bdr); border-radius: 10px; padding: 4px 8px; display: flex; align-items: center; gap: 6px; }
-    .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+    .brand-pill { background: var(--bg); backdrop-filter: blur(14px); border: 1px solid var(--bdr); border-radius: 10px; padding: 4px 8px; display: flex; align-items: center; gap: 6px; }
+    .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 8px var(--gold); animation: pulse 1.1s infinite; }
     .pulse-dot.online { background: var(--green); box-shadow: 0 0 10px var(--green); }
-    .brand-title { font-size: 10px; font-weight: 900; color: #fff; }
+    @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.45; } }
+    .brand-title { font-size: 10px; font-weight: 900; color: #fff; letter-spacing: 0.3px; }
     .brand-sub { font-size: 7.5px; color: var(--cyan); display: block; font-weight: 700; }
     .btn-group { display: flex; gap: 3px; }
     .hud-btn { background: var(--bg); border: 1px solid var(--bdr); color: #fff; padding: 5px 6px; border-radius: 7px; font-size: 8.5px; font-weight: 800; cursor: pointer; }
     .hud-btn.active { background: rgba(0,240,255,0.28); border-color: var(--cyan); color: var(--cyan); }
-    .hud-btn.gold { border-color: var(--gold); color: var(--gold); }
-    .hud-btn.key-connected { border-color: var(--green); color: var(--green); }
-    .hca-bar { display: flex; gap: 3px; overflow-x: auto; pointer-events: auto; padding: 2px 0; }
+    .hud-btn.gold { border-color: var(--gold); color: var(--gold); background: rgba(255,184,0,0.15); }
+    .hud-btn.key-connected { border-color: var(--green); color: var(--green); background: rgba(0,255,157,0.18); }
+    .hca-bar { display: flex; gap: 3px; overflow-x: auto; pointer-events: auto; padding: 1px 0; scrollbar-width: none; }
     .hca-chip { background: rgba(15,23,42,0.9); border: 1px solid rgba(255,255,255,0.2); color: #cbd5e1; padding: 3px 6px; border-radius: 6px; font-size: 8px; font-weight: 800; cursor: pointer; white-space: nowrap; }
-    .hca-chip.active { border-color: var(--green); color: var(--green); background: rgba(0,255,157,0.15); }
+    .hca-chip.active { border-color: var(--green); color: var(--green); background: rgba(0,255,157,0.16); }
     .telemetry-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; pointer-events: auto; }
     .scale-card { background: var(--bg); border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; padding: 4px 6px; cursor: pointer; }
-    .scale-card.active-scale { border-color: var(--cyan); background: rgba(0,42,72,0.88); }
-    .scale-tag { font-size: 7.5px; font-weight: 900; color: var(--cyan); }
-    .scale-metric { font-size: 11px; font-weight: 900; color: #fff; }
+    .scale-card.active-scale { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0,240,255,0.28); background: rgba(0,42,72,0.88); }
+    .scale-tag { font-size: 7.5px; font-weight: 900; color: var(--cyan); text-transform: uppercase; }
+    .scale-metric { font-size: 11px; font-weight: 900; color: #fff; margin: 1px 0; }
     .scale-sub { font-size: 7.5px; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .biophysics-bar { display: grid; grid-template-columns: 1.3fr 1fr; gap: 4px; pointer-events: auto; }
+    .biophysics-bar { display: grid; grid-template-columns: 1.35fr 1fr; gap: 4px; pointer-events: auto; }
     .osc-panel { background: rgba(4,9,22,0.9); border: 1px solid rgba(0,240,255,0.25); border-radius: 8px; padding: 3px 6px; }
     .osc-header { display: flex; justify-content: space-between; font-size: 7.5px; font-weight: 800; color: var(--cyan); }
     .osc-canvas { width: 100%; height: 28px; display: block; }
-    #hca-niche-hud { background: rgba(4,12,28,0.94); border: 1px solid var(--green); border-radius: 8px; padding: 4px 7px; font-size: 8px; pointer-events: auto; display: flex; justify-content: space-between; align-items: center; }
+    #hca-niche-hud { background: rgba(4,12,28,0.94); border: 1px solid var(--green); border-radius: 8px; padding: 3px 7px; font-size: 8px; pointer-events: auto; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
     .zoom-rail { position: fixed; right: 6px; top: 55%; transform: translateY(-50%); z-index: 10; background: var(--bg); border: 1px solid var(--bdr); border-radius: 18px; width: 34px; padding: 6px 3px; display: flex; flex-direction: column; align-items: center; gap: 5px; pointer-events: auto; }
     .zoom-step-btn { width: 24px; height: 22px; border-radius: 6px; border: 1px solid var(--bdr); background: rgba(0,240,255,0.15); color: #fff; font-weight: 900; cursor: pointer; }
     .slider-wrap { width: 24px; height: 95px; display: flex; align-items: center; justify-content: center; }
-    #zoom-slider { width: 90px; height: 20px; transform: rotate(-90deg); accent-color: var(--cyan); }
+    #zoom-slider { width: 90px; height: 20px; transform: rotate(-90deg); accent-color: var(--cyan); cursor: pointer; }
     .zoom-val { font-size: 8.5px; font-weight: 900; color: var(--cyan); }
     .bottom-deck { position: fixed; bottom: 5px; left: 5px; right: 5px; z-index: 10; background: var(--bg); border: 1px solid var(--bdr); border-radius: 14px; padding: 6px; display: flex; flex-direction: column; gap: 5px; pointer-events: auto; }
-    .narration-box { font-size: 9.5px; line-height: 1.3; color: #e2e8f0; background: rgba(0,0,0,0.55); border-left: 3px solid var(--cyan); padding: 4px 7px; border-radius: 5px; max-height: 48px; overflow-y: auto; }
+    .narration-box { font-size: 9.5px; line-height: 1.32; color: #e2e8f0; background: rgba(0,0,0,0.55); border-left: 3px solid var(--cyan); padding: 4px 7px; border-radius: 5px; max-height: 46px; overflow-y: auto; }
     .preset-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
-    .preset-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); color: #fff; padding: 5px 2px; border-radius: 6px; font-size: 8.5px; font-weight: 800; cursor: pointer; }
+    .preset-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); color: #fff; padding: 5px 2px; border-radius: 6px; font-size: 8.5px; font-weight: 800; cursor: pointer; text-align: center; }
     .preset-btn.denovo { border-color: var(--pink); color: #ff85b3; background: rgba(255,42,133,0.18); }
     .input-row { display: flex; gap: 4px; }
-    #prompt-input { flex: 1; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.28); border-radius: 8px; padding: 6px 8px; color: #fff; font-size: 10.5px; user-select: text; -webkit-user-select: text; }
+    #prompt-input { flex: 1; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.28); border-radius: 8px; padding: 6px 8px; color: #fff; font-size: 10.5px; outline: none; user-select: text; -webkit-user-select: text; }
     .action-btn { background: linear-gradient(135deg, #00f0ff, #0077ff); border: none; color: #000; font-weight: 900; font-size: 9.5px; padding: 0 9px; border-radius: 8px; cursor: pointer; }
-    #api-modal { position: fixed; top: 36px; left: 8px; right: 8px; z-index: 30; background: rgba(4,9,24,0.98); border: 1.5px solid var(--cyan); border-radius: 14px; padding: 10px; display: none; flex-direction: column; gap: 7px; pointer-events: auto; }
+    #api-modal { position: fixed; top: 36px; left: 8px; right: 8px; z-index: 30; background: rgba(4,9,24,0.98); border: 1.5px solid var(--cyan); border-radius: 14px; padding: 10px; display: none; flex-direction: column; gap: 7px; pointer-events: auto; box-shadow: 0 20px 60px #000; }
     .modal-input, .modal-select { width: 100%; background: #0f172a; border: 1px solid #334155; color: #fff; padding: 7px; border-radius: 7px; font-size: 10.5px; user-select: text; -webkit-user-select: text; }
     .status-banner { font-size: 9.5px; font-weight: 800; padding: 5px 8px; border-radius: 7px; background: rgba(255,184,0,0.15); border: 1px solid var(--gold); color: var(--gold); }
     .status-banner.ok { background: rgba(0,255,157,0.16); border-color: var(--green); color: var(--green); }
@@ -62,28 +65,31 @@
 <!-- START OF PART 2 -->
 <body>
   <video id="ar-video" autoplay playsinline muted></video>
+  <div id="sam-reticle"></div>
   <canvas id="webgl-canvas"></canvas>
   <div id="pin-overlay"></div>
+  <input type="file" id="glb-file-input" accept=".glb,.gltf" style="display:none;" onchange="loadLocalGLBFile(event)" />
 
   <div class="top-hud">
     <div class="hud-row">
       <div class="brand-pill">
         <div class="pulse-dot" id="ai-status-dot"></div>
         <div>
-          <span class="brand-title">HEART CELL ATLAS v2 • XR TWIN</span>
-          <span class="brand-sub" id="scale-indicator">HRA 3D Visible Human Heart + 704,296 Single-Cell Atlas</span>
+          <span class="brand-title">OMNISCALE-FOLD XR</span>
+          <span class="brand-sub" id="scale-indicator">SCALE 1: MACRO (Real 3D .GLB Heart + HCA v2)</span>
         </div>
       </div>
       <div class="btn-group">
-        <button class="hud-btn" id="btn-dissect" onclick="toggleDissection()">🔪 Dissect</button>
-        <button class="hud-btn active" id="btn-labels" onclick="toggleLabels()">🏷️ Pins</button>
+        <button class="hud-btn" id="btn-dissect" onclick="toggleDissection()" title="Slice Open 3D Heart">🔪 Dissect</button>
+        <button class="hud-btn active" id="btn-labels" onclick="toggleLabels()" title="Toggle 3D Atlas Pins">🏷️ Pins</button>
+        <button class="hud-btn" onclick="document.getElementById('glb-file-input').click()" title="Pick .GLB from Phone">📂 .GLB</button>
         <button class="hud-btn gold" id="btn-demo" onclick="triggerJudgeAutoDemo()">🎬 Demo</button>
         <button class="hud-btn" id="btn-ar" onclick="toggleARPassthrough()">📷 AR</button>
         <button class="hud-btn" id="btn-key" onclick="toggleModal()">🔑 API</button>
       </div>
     </div>
 
-    <div class="hca-bar" id="hca-region-bar">
+    <div class="hca-bar">
       <button class="hca-chip active" onclick="selectHcaRegion('LV',this)">LV (Left Ventricle)</button>
       <button class="hca-chip" onclick="selectHcaRegion('RV',this)">RV (Right Ventricle)</button>
       <button class="hca-chip" onclick="selectHcaRegion('LA',this)">LA (Left Atrium)</button>
@@ -96,7 +102,7 @@
 
     <div class="telemetry-grid">
       <div class="scale-card active-scale" id="card-macro" onclick="setZoomSmooth(1.0)">
-        <div class="scale-tag">1. Macro (HRA 3D)</div>
+        <div class="scale-tag">1. Macro (3D .GLB)</div>
         <div class="scale-metric" id="val-macro">72 BPM</div>
         <div class="scale-sub" id="sub-macro">BP: 120/80 • EF: 62%</div>
       </div>
@@ -106,15 +112,15 @@
         <div class="scale-sub" id="sub-meso">MYH7+ TTN+ RYR2+</div>
       </div>
       <div class="scale-card" id="card-nano" onclick="setZoomSmooth(3.0)">
-        <div class="scale-tag">3. Nano (drug2cell)</div>
+        <div class="scale-tag">3. Nano (ESMFold)</div>
         <div class="scale-metric" id="val-nano">ΔΔG: -9.4 kcal</div>
-        <div class="scale-sub" id="sub-nano">ADRB1 • RYR2 • HCN4</div>
+        <div class="scale-sub" id="sub-nano">Occ: 15% • RMSD: 0.4Å</div>
       </div>
     </div>
 
     <div class="biophysics-bar">
       <div class="osc-panel">
-        <div class="osc-header"><span>LEAD-II ECG & SAN/AVN WAVE</span><span id="ecg-status">NORMAL SINUS</span></div>
+        <div class="osc-header"><span>LEAD-II ECG & HIS-PURKINJE WAVE</span><span id="ecg-status">NORMAL SINUS</span></div>
         <canvas id="ecg-canvas" class="osc-canvas" width="220" height="28"></canvas>
       </div>
       <div class="osc-panel">
@@ -124,8 +130,10 @@
     </div>
 
     <div id="hca-niche-hud">
-      <div id="hca-niche-summary"><b>HCA Region [LV]:</b> vCM (49%) • EC (22%) • FB (16%) • Pericytes (8%) • LYVE1+ MP (5%)</div>
-      <div style="color:var(--cyan);font-weight:900;" id="mesh-source-badge">⏳ Loading NIH 3D Heart...</div>
+      <div id="hca-niche-summary" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+        <b>HCA [LV]:</b> vCM1 (49%) • EC (22%) • FB (16%) • Pericytes (8%) • LYVE1+ MP (5%)
+      </div>
+      <div style="color:var(--cyan);font-weight:900;white-space:nowrap;" id="mesh-source-badge">⏳ Loading ./heart.glb...</div>
     </div>
   </div>
 
@@ -138,110 +146,116 @@
 
   <div id="api-modal">
     <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:900;color:var(--cyan);">
-      <span>⚡ Meta & Groq API + ESMFold Setup</span><span style="cursor:pointer;color:#fff;" onclick="toggleModal()">✕</span>
+      <span>⚡ Meta & Groq API + ESMFold Setup</span><span style="cursor:pointer;color:#fff;padding:0 5px;" onclick="toggleModal()">✕</span>
     </div>
     <div id="api-status-banner" class="status-banner">🟡 Paste your Groq (<code>gsk_...</code>) or Official Meta ($150) Key below!</div>
     <select id="api-provider" class="modal-select">
       <option value="groq">Groq Cloud (Auto-Detects Active Llama 4 / 3.3 + Vision)</option>
       <option value="meta_wonder">Official Meta Model API ($150 Credits - muse-wonder-1.0)</option>
       <option value="meta_spark">Official Meta Model API ($150 Credits - muse-spark-1.3)</option>
+      <option value="fireworks">Fireworks AI ($25 Hackathon Credit - Llama 3.3 70B)</option>
     </select>
     <input type="password" id="api-key-input" class="modal-input" placeholder="Paste your gsk_... or Meta API Key here" />
     <button class="action-btn" style="padding:8px;width:100%;" onclick="testAndSaveApiKey()">⚡ Test & Save Live AI Connection</button>
+    <div style="font-size:10px;font-weight:800;color:var(--cyan);">🧬 Live Meta FAIR ESMFold Mutator (No Key Needed)</div>
     <input type="text" id="esm-seq" class="modal-input" value="MGDGWLPPDCGPHNRSGGGGATAAPTGSRQVSAELLSQQWEAGMSLLMALVVLLIVAGNVLVIAAIGRTQRLQTLTNLFITSLACADLVMGLLVVPFGATLVVRGTWLWGSFLCECWTSLDVLCVTASIETLCVIAIDRYLAITSPFRYQSLMTRARAKVIICTVWAISALVSFLPIMMHWWRDEDPQALKCYQDPGCCDFVTNRAYAIASSIISFYIPLLIMIFVALRVYREAKEQIRKIDR" />
     <div style="display:flex;gap:5px;">
-      <button class="action-btn" style="padding:8px;flex:1;" onclick="foldLiveProtein()">🧬 Fold via Meta ESMFold</button>
+      <button class="action-btn" style="padding:8px;flex:1;background:linear-gradient(135deg,#00ff9d,#00b8ff);" onclick="foldLiveProtein()">🧬 Fold 3D Protein via Meta ESMFold</button>
       <button class="hud-btn" onclick="toggleModal()">Done</button>
     </div>
   </div>
 
   <div class="bottom-deck">
     <div class="narration-box" id="narration-text">
-      <b>[Heart Cell Atlas v2 + NIH 3D Visible Human Heart]:</b> Streaming official <code>VH_M_Heart.glb</code> reference organ + 8-region single-cell spatial transcriptomics (Litviňuková & Kanemaru, <i>Nature</i>)! Tap any region chip (`LV`, `SAN`, `AVN`) or tap <b>🔪 Dissect</b>!
+      <b>[Real 3D .GLB Heart + Heart Cell Atlas v2]:</b> Automatically loading <code>./heart.glb</code> from your repository (or tap <b>📂 .GLB</b> to pick from phone). Tap <b>🔪 Dissect</b> to slice open internal valves & conduction, <b>2. Meso</b> for cardiomyocytes, or <b>3. Nano</b> for GPCR!
     </div>
     <div class="preset-row">
-      <button class="preset-btn" onclick="applyPreset('normal')">🟢 Healthy</button>
+      <button class="preset-btn" onclick="applyPreset('normal')">🟢 Baseline</button>
       <button class="preset-btn" onclick="applyPreset('epi')">⚡ +Epi</button>
       <button class="preset-btn" onclick="applyPreset('hypoxia')">🩸 Ischemia</button>
       <button class="preset-btn" onclick="applyPreset('blocker')">🛡️ β-Block</button>
-      <button class="preset-btn denovo" onclick="designDeNovoPeptideAndFold()">🧬 drug2cell</button>
+      <button class="preset-btn denovo" onclick="designDeNovoPeptideAndFold()">🧬 De Novo Drug</button>
     </div>
     <div class="input-row">
       <button class="action-btn" style="background:rgba(255,42,133,0.3);color:#fff;" onclick="startVoiceCommand()">🎤</button>
-      <button class="action-btn" style="background:rgba(0,255,157,0.2);color:var(--green);" onclick="scanPhysicalObjectWithVision()">👁️</button>
-      <input type="text" id="prompt-input" placeholder="Ask drug2cell: e.g. 'GLP-1 agonist on SAN' or 'Give Epinephrine'..." onkeydown="if(event.key==='Enter') runCausalSimulation()" />
+      <button class="action-btn" style="background:rgba(0,255,157,0.2);color:var(--green);" onclick="scanPhysicalObjectWithVision()">👁️ Scan</button>
+      <input type="text" id="prompt-input" placeholder="e.g. 'Mutate residue G48W' or 'Give 2mg Noradrenaline'..." onkeydown="if(event.key==='Enter') runCausalSimulation()" />
       <button class="action-btn" onclick="runCausalSimulation()">Run AI</button>
     </div>
   </div>
 <!-- END OF PART 2 -->
 <!-- START OF PART 3 -->
 <script>
-  // COMPLETE HUMAN HEART CELL ATLAS v2 DATA (heartcellatlas.org - Litvinukova 2020 & Kanemaru 2023)
   var HCA_REGIONS = {
-    LV:  { name: "Left Ventricle Free Wall", pos: [0.42, -0.35, 0.25], dominant: "vCM1 (49.2%)", markers: "MYH7 • TTN • TNNT2 • RYR2 • ADRB1", comp: [49, 22, 16, 8, 5], niche: "High-force ventricular syncytium + dense capillary EC1 + pericytes", drugTarget: "ADRB1 / RYR2 / GJA1" },
-    RV:  { name: "Right Ventricle Free Wall", pos: [-0.38, -0.28, 0.30], dominant: "vCM2 (44.8%)", markers: "MYH7 • NPPA • DCN • COL1A1", comp: [45, 24, 19, 7, 5], niche: "Crescentic RV myocardium + FB1 matrix fibroblasts", drugTarget: "ADRB1 / CACNA1C / SCN5A" },
-    LA:  { name: "Left Atrium", pos: [0.42, 0.72, -0.15], dominant: "aCM1 (36.4%)", markers: "MYH6 • NPPA • MYL7 • KCNJ3", comp: [36, 25, 22, 9, 8], niche: "Atrial natriuretic myocytes + endocardial NPR3+ cells", drugTarget: "KCNJ3 / ADRB1 / GLP1R" },
-    RA:  { name: "Right Atrium & Auricle", pos: [-0.56, 0.68, 0.12], dominant: "aCM2 (34.1%)", markers: "MYH6 • BMP10 • NPR3 • DCN", comp: [34, 24, 24, 10, 8], niche: "Pectinate atrial bundles + BMP10+ right atrial myocytes", drugTarget: "BMP10 / HCN4 / ADRB1" },
-    SAN: { name: "Sinoatrial Node (Pacemaker)", pos: [-0.56, 0.82, 0.08], dominant: "SAN P-Cell + Glia", markers: "HCN4 • ISL1 • TBX3 •CACNA1D • PLP1+ Glia", comp: [18, 16, 42, 14, 10], niche: "Compartmentalized HCN4+ pacemaker core + SLIT2+ FB4 + Glutamatergic PLP1+ Glia (SLC1A3/GRIA1)", drugTarget: "HCN4 / CACNA1D / GLP1R" },
-    AVN: { name: "Atrioventricular Node & His", pos: [-0.06, 0.38, 0.08], dominant: "AVN P-Cell + LYVE1+ MP", markers: "HCN4 • GJC1(Cx45) • CACNA1G • LYVE1+ MP", comp: [22, 18, 35, 10, 15], niche: "AVN conduction niche coupled to resident LYVE1+ CD163+ macrophages via Cx43", drugTarget: "CACNA1G / GJC1 / ADRB1" },
-    SP:  { name: "Interventricular Septum", pos: [0.04, -0.32, 0.12], dominant: "Purkinje + vCM (46%)", markers: "GJA5(Cx40) • SCN5A • IRX3 • MYH7", comp: [46, 21, 18, 8, 7], niche: "Rapid-conduction GJA5+ His-Purkinje network + septal vCM", drugTarget: "SCN5A / GJA5 / RYR2" },
-    AX:  { name: "Cardiac Apex & Epicardium", pos: [0.46, -1.18, 0.28], dominant: "vCM3 + IgA/IgG Plasma", markers: "ANKRD1 • NPPB • POSTN • JCHAIN", comp: [42, 20, 22, 8, 8], niche: "Apical vortex myocardium + sub-epicardial IgA+/IgG+ plasma B-cell immune niche", drugTarget: "ADRB1 / POSTN /LOX" }
+    LV:  { name: "Left Ventricle Free Wall", pos: [0.42, -0.35, 0.25], dominant: "vCM1 (49.2%)", markers: "MYH7 • TTN • TNNT2 • RYR2 • ADRB1", niche: "High-force ventricular syncytium + dense capillary EC1 + pericytes", drugTarget: "ADRB1 / RYR2 / GJA1" },
+    RV:  { name: "Right Ventricle Free Wall", pos: [-0.38, -0.28, 0.30], dominant: "vCM2 (44.8%)", markers: "MYH7 • NPPA • DCN • COL1A1", niche: "Crescentic RV myocardium + FB1 matrix fibroblasts", drugTarget: "ADRB1 / CACNA1C / SCN5A" },
+    LA:  { name: "Left Atrium", pos: [0.42, 0.72, -0.15], dominant: "aCM1 (36.4%)", markers: "MYH6 • NPPA • MYL7 • KCNJ3", niche: "Atrial natriuretic myocytes + endocardial NPR3+ cells", drugTarget: "KCNJ3 / ADRB1 / GLP1R" },
+    RA:  { name: "Right Atrium & Auricle", pos: [-0.56, 0.68, 0.12], dominant: "aCM2 (34.1%)", markers: "MYH6 • BMP10 • NPR3 • DCN", niche: "Pectinate atrial bundles + BMP10+ right atrial myocytes", drugTarget: "BMP10 / HCN4 / ADRB1" },
+    SAN: { name: "Sinoatrial Node (Pacemaker)", pos: [-0.56, 0.82, 0.08], dominant: "SAN P-Cell + Glia", markers: "HCN4 • ISL1 • TBX3 • CACNA1D • PLP1+ Glia", niche: "HCN4+ pacemaker core + SLIT2+ FB4 + Glutamatergic PLP1+ Glia", drugTarget: "HCN4 / CACNA1D / GLP1R" },
+    AVN: { name: "Atrioventricular Node & His", pos: [-0.06, 0.38, 0.08], dominant: "AVN P-Cell + LYVE1+ MP", markers: "HCN4 • GJC1(Cx45) • CACNA1G • LYVE1+ MP", niche: "AVN conduction niche coupled to resident LYVE1+ macrophages via Cx43", drugTarget: "CACNA1G / GJC1 / ADRB1" },
+    SP:  { name: "Interventricular Septum", pos: [0.04, -0.32, 0.12], dominant: "Purkinje + vCM (46%)", markers: "GJA5(Cx40) • SCN5A • IRX3 • MYH7", niche: "Rapid-conduction GJA5+ His-Purkinje network + septal vCM", drugTarget: "SCN5A / GJA5 / RYR2" },
+    AX:  { name: "Cardiac Apex & Epicardium", pos: [0.46, -1.18, 0.28], dominant: "vCM3 + IgA/IgG Plasma", markers: "ANKRD1 • NPPB • POSTN • JCHAIN", niche: "Apical vortex myocardium + sub-epicardial IgA+/IgG+ plasma B-cells", drugTarget: "ADRB1 / POSTN / LOX" }
   };
 
-  // 11 HCA Single-Cell Clusters with UMAP 3D coordinates & colors
-  var HCA_CELL_TYPES = [
-    { id: "vCM", name: "Ventricular CM (MYH7+ TTN+)", color: 0xef4444, center: [-1.1, 0.5, 0] },
-    { id: "aCM", name: "Atrial CM (MYH6+ NPPA+)", color: 0xf97316, center: [-0.6, 0.85, 0.2] },
-    { id: "P_Cell", name: "SAN/AVN Pacemaker (HCN4+ ISL1+)", color: 0xfacc15, center: [0.0, 0.95, 0.3] },
-    { id: "Purkinje", name: "Purkinje Fiber (GJA5+ SCN5A+)", color: 0xeab308, center: [0.4, 0.75, 0.2] },
-    { id: "FB", name: "Cardiac Fibroblast (DCN+ COL1A1+)", color: 0x38bdf8, center: [1.0, 0.4, -0.1] },
-    { id: "EC", name: "Endothelial (PECAM1+ VWF+)", color: 0x10b981, center: [-0.9, -0.55, 0.2] },
-    { id: "Pericyte", name: "Pericyte (PDGFRB+ ABCC9+)", color: 0x06b6d4, center: [-0.3, -0.7, -0.2] },
-    { id: "SMC", name: "Smooth Muscle (MYH11+ ACTA2+)", color: 0x8b5cf6, center: [0.3, -0.65, 0.1] },
-    { id: "MP", name: "Resident Macrophage (LYVE1+ CD163+)", color: 0xec4899, center: [0.95, -0.45, 0.2] },
-    { id: "Glia", name: "Cardiac Glia / Schwann (PLP1+ SLC1A3+)", color: 0x00ff9d, center: [0.15, 0.2, 0.45] },
-    { id: "Plasma", name: "Epicardial Plasma B (IgA+ IgG+)", color: 0xa855f7, center: [1.25, -0.1, -0.3] }
+  var ANATOMY_PINS = [
+    { mode: 'ext', label: 'Aortic Arch & Great Vessels', pos: [0.0, 1.35, 0.05] },
+    { mode: 'ext', label: 'Superior Vena Cava (SVC)', pos: [-0.62, 1.05, 0.0] },
+    { mode: 'ext', label: 'Right Atrium & Auricle', pos: [-0.58, 0.55, 0.22] },
+    { mode: 'ext', label: 'Left Ventricle & LAD Sulcus', pos: [0.22, -0.25, 0.62] },
+    { mode: 'ext', label: 'Apex Cordis', pos: [0.42, -1.15, 0.25] },
+    { mode: 'int', label: 'SA Node (HCN4+ Pacemaker)', pos: [-0.56, 0.82, 0.08] },
+    { mode: 'int', label: 'AV Node & Bundle of His', pos: [-0.06, 0.38, 0.08] },
+    { mode: 'int', label: 'Mitral Valve & Chordae', pos: [0.32, 0.34, 0.08] },
+    { mode: 'int', label: 'Tricuspid Valve & Papillary M.', pos: [-0.34, 0.28, 0.12] },
+    { mode: 'int', label: 'Interventricular Septum & Purkinje', pos: [0.04, -0.35, 0.12] },
+    { mode: 'meso', label: 'Striated Sarcomere (MYH7/TTN)', pos: [-0.6, 0.68, -0.15] },
+    { mode: 'meso', label: 'Intercalated Disc (Cx43 Gap Jct)', pos: [0.1, 0.68, -0.15] },
+    { mode: 'meso', label: 'HCA 11-Lineage Single-Cell Niche', pos: [0.0, -0.1, 0.1] },
+    { mode: 'meso', label: 'Capillary & Biconcave RBCs', pos: [0.0, 0.0, 0.42] },
+    { mode: 'nano', label: 'β₁-Adrenergic Receptor (PDB: 7BTS)', pos: [0.0, 0.25, 0.0] },
+    { mode: 'nano', label: 'Heterotrimeric Gs-Alpha Subunit', pos: [-0.42, -0.78, 0.12] },
+    { mode: 'nano', label: 'CaV1.2 & RyR2 Calcium Release', pos: [1.15, -0.45, 0.0] },
+    { mode: 'nano', label: 'Actin-Tropomyosin & Myosin Heads', pos: [0.0, -1.72, 0.0] }
   ];
 
-  var activeHcaRegion = 'LV';
-  var zoomLevel = 1.0, targetZoom = 1.0, dissectActive = false, showLabels = true, autoDemoRunning = false, autoDemoAbortId = 0;
+  var pinDomElements = [], overlayEl = document.getElementById('pin-overlay');
+  ANATOMY_PINS.forEach(function(p) {
+    var el = document.createElement('div'); el.className = 'anat-pin'; el.innerText = p.label; el.style.display = 'none';
+    overlayEl.appendChild(el); pinDomElements.push({ data: p, el: el });
+  });
+
+  var zoomLevel = 1.0, targetZoom = 1.0, dissectActive = false, showLabels = true, autoDemoRunning = false, autoDemoAbortId = 0, glbMixer = null;
 
   var canvas = document.getElementById('webgl-canvas');
   var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.18;
+  renderer.toneMappingExposure = 1.22;
   renderer.localClippingEnabled = true;
 
   var dissectPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 5.0);
   var scene = new THREE.Scene();
   var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.05, 200);
-  camera.position.set(0, 0.1, 5.4);
+  camera.position.set(0, 0.08, 5.2);
 
-  scene.add(new THREE.HemisphereLight(0xffe4e6, 0x1e293b, 0.98));
-  var keyLight = new THREE.DirectionalLight(0xfff1f2, 1.5); keyLight.position.set(3.5, 5.5, 6.0); scene.add(keyLight);
-  var fillLight = new THREE.DirectionalLight(0xfecdd3, 0.65); fillLight.position.set(-4.5, 1.5, 3.5); scene.add(fillLight);
-  var rimLight = new THREE.DirectionalLight(0x38bdf8, 0.7); rimLight.position.set(0, -4, -5); scene.add(rimLight);
+  scene.add(new THREE.HemisphereLight(0xfff1f2, 0x1e293b, 1.15));
+  var keyLight = new THREE.DirectionalLight(0xffffff, 1.65); keyLight.position.set(3.5, 5.5, 6.0); scene.add(keyLight);
+  var fillLight = new THREE.DirectionalLight(0xfecdd3, 0.75); fillLight.position.set(-4.5, 1.5, 3.5); scene.add(fillLight);
+  var rimLight = new THREE.DirectionalLight(0x38bdf8, 0.75); rimLight.position.set(0, -4, -5); scene.add(rimLight);
 
   var worldRoot = new THREE.Group(); scene.add(worldRoot);
   var macroGroup = new THREE.Group(), mesoGroup = new THREE.Group(), nanoGroup = new THREE.Group();
   worldRoot.add(macroGroup, mesoGroup, nanoGroup);
 
-  var ventricleBeatGroup = new THREE.Group(), internalHeartGroup = new THREE.Group(), nihGlbGroup = new THREE.Group();
-  macroGroup.add(ventricleBeatGroup, nihGlbGroup);
-  ventricleBeatGroup.add(internalHeartGroup);
+  var ventricleBeatGroup = new THREE.Group(), userGlbGroup = new THREE.Group(), fallbackShellGroup = new THREE.Group(), internalHeartGroup = new THREE.Group();
+  macroGroup.add(ventricleBeatGroup, userGlbGroup);
+  ventricleBeatGroup.add(fallbackShellGroup, internalHeartGroup);
 
-  // Region Target Beacon on the 3D Heart
-  var regionBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 16), new THREE.MeshBasicMaterial({ color: 0x00ff9d, wireframe: true }));
+  var regionBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 16), new THREE.MeshBasicMaterial({ color: 0x00ff9d, wireframe: true }));
   regionBeacon.position.set(0.42, -0.35, 0.25);
   macroGroup.add(regionBeacon);
-
-  // STREAM OFFICIAL NIH / HUBMAP / HRA VISIBLE HUMAN 3D HEART MESH (VH_M_Heart.glb)
-  var HRA_HEART_URLS = [
-    "https://raw.githubusercontent.com/hubmapconsortium/ccf-releases/b036a91aaf7234f462b1249d4a5f4fb0e982f412/v1.2/models/VH_M_Heart.glb",
-    "https://cdn.humanatlas.io/digital-objects/ref-organ/heart-male/v1.2/assets/VH_M_Heart.glb"
-  ];
 
   function loadScriptAsync(url) {
     return new Promise(function(resolve, reject) {
@@ -250,66 +264,118 @@
     });
   }
 
-  async function bootOfficialNIH3DHeart() {
-    try {
-      if (!THREE.GLTFLoader) {
-        try { await loadScriptAsync("https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"); }
-        catch (e) { await loadScriptAsync("https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"); }
-      }
-      if (!THREE.GLTFLoader) return;
-      var loader = new THREE.GLTFLoader();
-      for (var u = 0; u < HRA_HEART_URLS.length; u++) {
-        try {
-          var gltf = await new Promise(function(res, rej) { loader.load(HRA_HEART_URLS[u], res, undefined, rej); });
-          var root = gltf.scene;
-          var box = new THREE.Box3().setFromObject(root);
-          var size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
-          var scale = 3.1 / (Math.max(size.x, size.y, size.z) || 1);
-          root.position.sub(center);
-          var meshIdx = 0;
-          root.traverse(function(node) {
-            if (node.isMesh) {
-              meshIdx++;
-              var nm = (node.name || '').toLowerCase();
-              var isGreatVessel = /aorta|vena|pulmonary|trunk|artery|vein/.test(nm);
-              var isValveOrSeptum = /valve|tricuspid|mitral|bicuspid|aortic|septum|papillary|chordae/.test(nm);
-              node.material = new THREE.MeshPhysicalMaterial({
-                color: isValveOrSeptum ? 0xfef3c7 : (isGreatVessel ? 0xdc2626 : 0x991b1b),
-                roughness: 0.32, metalness: 0.05, clearcoat: 0.82, clearcoatRoughness: 0.18,
-                side: THREE.DoubleSide,
-                clippingPlanes: isValveOrSeptum ? [] : [dissectPlane]
-              });
-            }
-          });
-          var wrap = new THREE.Group(); wrap.scale.setScalar(scale); wrap.add(root);
-          nihGlbGroup.add(wrap);
-          fallbackShellGroup.visible = false;
-          document.getElementById('mesh-source-badge').innerText = "🟢 NIH HRA 3D Heart (" + meshIdx + " Sub-Meshes)";
-          break;
-        } catch (err) {}
-      }
-    } catch (e) {}
+  async function ensureGLTFLoaderReady() {
+    if (!THREE.GLTFLoader) {
+      try { await loadScriptAsync("https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"); }
+      catch (e) { await loadScriptAsync("https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"); }
+    }
+    if (!THREE.DRACOLoader) {
+      try { await loadScriptAsync("https://unpkg.com/three@0.128.0/examples/js/loaders/DRACOLoader.js"); } catch (e) {}
+    }
   }
-  bootOfficialNIH3DHeart();
+
+  function mountGLBScene(gltf, labelText) {
+    while (userGlbGroup.children.length > 0) userGlbGroup.remove(userGlbGroup.children[0]);
+    var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
+    if (!root) return;
+
+    // Preserve 100% of original photographic textures & normal maps while enabling surgical dissection slicing
+    root.traverse(function(node) {
+      if (node.isMesh && node.material) {
+        var mats = Array.isArray(node.material) ? node.material : [node.material];
+        mats.forEach(function(m) {
+          m.side = THREE.DoubleSide;
+          m.clippingPlanes = [dissectPlane];
+          m.clipShadows = true;
+          if (m.map) m.map.encoding = THREE.sRGBEncoding;
+          m.needsUpdate = true;
+        });
+      }
+    });
+
+    var box = new THREE.Box3().setFromObject(root);
+    var size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+    var maxDim = Math.max(size.x, size.y, size.z) || 1;
+    var scale = 2.85 / maxDim;
+    root.position.sub(center);
+
+    var wrapper = new THREE.Group();
+    wrapper.scale.setScalar(scale);
+    wrapper.add(root);
+    userGlbGroup.add(wrapper);
+
+    if (gltf.animations && gltf.animations.length > 0) {
+      glbMixer = new THREE.AnimationMixer(root);
+      gltf.animations.forEach(function(clip) { glbMixer.clipAction(clip).play(); });
+    } else {
+      glbMixer = null;
+    }
+
+    fallbackShellGroup.visible = false;
+    document.getElementById('mesh-source-badge').innerText = "🟢 " + labelText;
+    document.getElementById('narration-text').innerHTML =
+      "<b>[🫀 Real 3D " + labelText + " Active]:</b> Original photographic textures, vessels & chambers loaded! Tap <b>🔪 Dissect</b> to slice inside or drag to rotate 360°.";
+  }
+
+  async function autoLoadRepoHeartGLB() {
+    var badge = document.getElementById('mesh-source-badge');
+    try {
+      await ensureGLTFLoaderReady();
+      var loader = new THREE.GLTFLoader();
+      if (THREE.DRACOLoader) {
+        var draco = new THREE.DRACOLoader();
+        draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.4.1/");
+        loader.setDRACOLoader(draco);
+      }
+      var candidates = ["./heart.glb", "heart.glb", "./Heart.glb"];
+      for (var i = 0; i < candidates.length; i++) {
+        try {
+          var gltf = await new Promise(function(resolve, reject) {
+            loader.load(candidates[i], resolve, function(xhr) {
+              if (xhr && xhr.total) badge.innerText = "⏳ heart.glb " + Math.round((xhr.loaded / xhr.total) * 100) + "%";
+            }, reject);
+          });
+          mountGLBScene(gltf, "heart.glb Loaded");
+          return;
+        } catch (innerErr) {}
+      }
+      badge.innerText = "🟡 Tap 📂 .GLB or check heart.glb";
+    } catch (e) {
+      badge.innerText = "🟡 Tap 📂 .GLB to load file";
+    }
+  }
+
+  async function loadLocalGLBFile(event) {
+    var file = event.target.files && event.target.files[0];
+    if (!file) return;
+    await ensureGLTFLoaderReady();
+    var loader = new THREE.GLTFLoader();
+    if (THREE.DRACOLoader) {
+      var draco = new THREE.DRACOLoader();
+      draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.4.1/");
+      loader.setDRACOLoader(draco);
+    }
+    loader.load(URL.createObjectURL(file), function(gltf) {
+      mountGLBScene(gltf, file.name);
+    });
+  }
+  autoLoadRepoHeartGLB();
 </script>
 <!-- END OF PART 3 -->
 <!-- START OF PART 4 -->
 <script>
-  var fallbackShellGroup = new THREE.Group();
-  ventricleBeatGroup.add(fallbackShellGroup);
-
-  var heartMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.32, clearcoat: 0.85, side: THREE.DoubleSide, clippingPlanes: [dissectPlane] });
-  var septumMat = new THREE.MeshPhysicalMaterial({ color: 0x881337, roughness: 0.38, clearcoat: 0.6, side: THREE.DoubleSide });
-  var valveMat = new THREE.MeshPhysicalMaterial({ color: 0xfef3c7, roughness: 0.24, clearcoat: 0.9, side: THREE.DoubleSide });
-  var conductionMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
-
   function makeTube(pts, r, mat, segs) {
     var vecs = pts.map(function(p) { return new THREE.Vector3(p[0], p[1], p[2]); });
     return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(vecs), segs || 24, r, 10, false), mat);
   }
 
-  // High-resolution biventricular shell (renders immediately & seamlessly hands off to NIH GLB when downloaded)
-  var ventGeo = new THREE.SphereGeometry(1.0, 72, 72), posAttr = ventGeo.attributes.position, colors = [];
+  // Instant anatomical standby shell (visible only while ./heart.glb is downloading)
+  var heartMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.32, clearcoat: 0.85, side: THREE.DoubleSide, clippingPlanes: [dissectPlane] });
+  var septumMat = new THREE.MeshPhysicalMaterial({ color: 0x881337, roughness: 0.38, clearcoat: 0.6, side: THREE.DoubleSide });
+  var valveMat = new THREE.MeshPhysicalMaterial({ color: 0xfef3c7, roughness: 0.24, clearcoat: 0.9, side: THREE.DoubleSide });
+  var conductionMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+
+  var ventGeo = new THREE.SphereGeometry(1.0, 64, 64), posAttr = ventGeo.attributes.position, colors = [];
   var cMyo = new THREE.Color(0x9e1b1b), cFat = new THREE.Color(0xeab308);
   for (var vi = 0; vi < posAttr.count; vi++) {
     var x = posAttr.getX(vi), y = posAttr.getY(vi), z = posAttr.getZ(vi), t = (y + 1.0) * 0.5;
@@ -326,69 +392,97 @@
   ventGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   ventGeo.computeVertexNormals();
   fallbackShellGroup.add(new THREE.Mesh(ventGeo, heartMat));
-  fallbackShellGroup.add(makeTube([[-0.02,0.52,0.08],[0.06,1.15,0.10],[-0.06,1.54,0.0],[-0.38,1.44,-0.18],[-0.44,0.55,-0.34]], 0.21, new THREE.MeshPhysicalMaterial({ color: 0xd9383a, clearcoat: 0.6 }), 32));
-  fallbackShellGroup.add(makeTube([[-0.22,0.48,0.36],[-0.08,0.96,0.30],[0.18,1.16,0.14],[0.55,1.14,-0.04]], 0.18, new THREE.MeshPhysicalMaterial({ color: 0x64748b }), 24));
+  fallbackShellGroup.add(makeTube([[-0.02,0.52,0.08],[0.06,1.15,0.10],[-0.06,1.54,0.0],[-0.38,1.44,-0.18],[-0.44,0.55,-0.34]], 0.21, new THREE.MeshPhysicalMaterial({ color: 0xd9383a, clearcoat: 0.6 }), 28));
+  fallbackShellGroup.add(makeTube([[-0.22,0.48,0.36],[-0.08,0.96,0.30],[0.18,1.16,0.14],[0.55,1.14,-0.04]], 0.18, new THREE.MeshPhysicalMaterial({ color: 0x64748b }), 22));
 
-  // Internal Septum, 4 Valves, Papillary Muscles & His-Purkinje Conduction System (Always visible on Dissect)
-  internalHeartGroup.add(makeTube([[-0.08,0.42,0.04],[-0.02,0.0,0.08],[0.10,-0.52,0.10],[0.32,-1.08,0.14]], 0.10, septumMat, 24));
+  // Internal Septum, 4 Valves, Chordae Tendineae & His-Purkinje Conduction (Revealed when Dissect slices open heart.glb!)
+  internalHeartGroup.add(makeTube([[-0.08,0.42,0.04],[-0.02,0.0,0.08],[0.10,-0.52,0.10],[0.32,-1.08,0.14]], 0.095, septumMat, 22));
   internalHeartGroup.add(makeTube([[0.02,-0.45,0.08],[-0.18,-0.56,0.14],[-0.36,-0.52,0.18]], 0.035, septumMat, 12));
-  var leafletGeo = new THREE.CircleGeometry(0.19, 14, 0, Math.PI);
+  var leafletGeo = new THREE.CircleGeometry(0.18, 14, 0, Math.PI);
   var mitralAntCusp = new THREE.Mesh(leafletGeo, valveMat); mitralAntCusp.position.set(0.32, 0.35, 0.05);
   var mitralPostCusp = new THREE.Mesh(leafletGeo, valveMat); mitralPostCusp.position.set(0.32, 0.35, -0.08);
   var tricuspidCusp1 = new THREE.Mesh(leafletGeo, valveMat); tricuspidCusp1.position.set(-0.34, 0.31, 0.10);
   var tricuspidCusp2 = new THREE.Mesh(leafletGeo, valveMat); tricuspidCusp2.position.set(-0.34, 0.31, -0.04);
   var lbbCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(-0.06,0.38,0.05),new THREE.Vector3(0.02,0.12,0.08),new THREE.Vector3(0.14,-0.38,0.12),new THREE.Vector3(0.34,-0.86,0.16),new THREE.Vector3(0.56,-0.45,0.18)]);
   var rbbCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(-0.02,0.22,0.07),new THREE.Vector3(-0.10,-0.28,0.12),new THREE.Vector3(-0.28,-0.68,0.16),new THREE.Vector3(-0.48,-0.38,0.18)]);
-  var conductionPulseDot = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 10), new THREE.MeshBasicMaterial({ color: 0x00f0ff }));
-  internalHeartGroup.add(mitralAntCusp, mitralPostCusp, tricuspidCusp1, tricuspidCusp2, new THREE.Mesh(new THREE.TubeGeometry(lbbCurve, 22, 0.016, 8, false), conductionMat), new THREE.Mesh(new THREE.TubeGeometry(rbbCurve, 18, 0.015, 8, false), conductionMat), conductionPulseDot);
+  var conductionPulseDot = new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 10), new THREE.MeshBasicMaterial({ color: 0x00f0ff }));
+  var conductionPulseDot2 = new THREE.Mesh(new THREE.SphereGeometry(0.048, 10, 10), new THREE.MeshBasicMaterial({ color: 0x00ff9d }));
+  internalHeartGroup.add(mitralAntCusp, mitralPostCusp, tricuspidCusp1, tricuspidCusp2, new THREE.Mesh(new THREE.TubeGeometry(lbbCurve, 22, 0.015, 8, false), conductionMat), new THREE.Mesh(new THREE.TubeGeometry(rbbCurve, 18, 0.014, 8, false), conductionMat), conductionPulseDot, conductionPulseDot2);
 
-  // SCALE 2 (MESO): HEART CELL ATLAS v2 SPATIAL TRANSCRIPTOMIC NICHE + 11-CLUSTER 3D UMAP + SYNCYTIUM
+  // SCALE 2 (MESO): STRIATED CARDIOMYOCYTES, INTERCALATED DISCS, HCA SINGLE-CELL CLUSTERS & BICONCAVE RBCs
   var sarcomereGroup = new THREE.Group(), umapCloudGroup = new THREE.Group();
   mesoGroup.add(sarcomereGroup, umapCloudGroup);
 
-  var myocyteMat = new THREE.MeshPhysicalMaterial({ color: 0xb91c1c, roughness: 0.34, clearcoat: 0.6 });
-  var fiber1 = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 4.4, 20).rotateZ(Math.PI/2), myocyteMat); fiber1.position.set(0, 0.65, -0.2);
-  var fiber2 = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.23, 4.4, 20).rotateZ(Math.PI/2), myocyteMat); fiber2.position.set(0, -0.65, -0.2);
-  var br1 = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.35, 16), myocyteMat); br1.position.set(-0.35, 0, -0.2); br1.rotation.z = 0.4;
+  function createSarcomereTexture() {
+    var c = document.createElement('canvas'); c.width = 512; c.height = 128; var ctx = c.getContext('2d');
+    for (var s = 0; s < 16; s++) {
+      var bx = s * 32;
+      ctx.fillStyle = '#fca5a5'; ctx.fillRect(bx, 0, 32, 128);
+      ctx.fillStyle = '#991b1b'; ctx.fillRect(bx + 7, 0, 18, 128);
+      ctx.fillStyle = '#fecaca'; ctx.fillRect(bx + 14, 0, 4, 128);
+      ctx.fillStyle = '#3f0808'; ctx.fillRect(bx, 0, 2.5, 128);
+    }
+    var tex = new THREE.CanvasTexture(c); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
+  }
+  var myocyteMat = new THREE.MeshPhysicalMaterial({ map: createSarcomereTexture(), roughness: 0.34, clearcoat: 0.58 });
+  var fiber1 = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 4.6, 20).rotateZ(Math.PI/2), myocyteMat); fiber1.position.set(0, 0.66, -0.15);
+  var fiber2 = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 4.6, 20).rotateZ(Math.PI/2), myocyteMat); fiber2.position.set(0, -0.66, -0.15);
+  var br1 = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 1.4, 16), myocyteMat); br1.position.set(-0.35, 0, -0.15); br1.rotation.z = 0.4;
   sarcomereGroup.add(fiber1, fiber2, br1);
 
-  // Build 3D Single-Cell UMAP & Niche Clusters (220 Single-Nucleus Dots across the 11 HCA Lineages + Paracrine Glia/MP lines)
-  var cellNodeGeo = new THREE.SphereGeometry(0.042, 8, 8);
-  HCA_CELL_TYPES.forEach(function(ct) {
-    var cMat = new THREE.MeshStandardMaterial({ color: ct.color, emissive: ct.color, emissiveIntensity: 0.35, roughness: 0.25 });
-    for (var n = 0; n < 18; n++) {
-      var cellDot = new THREE.Mesh(cellNodeGeo, cMat);
-      cellDot.position.set(ct.center[0] + (Math.random() - 0.5) * 0.45, ct.center[1] + (Math.random() - 0.5) * 0.38, ct.center[2] + (Math.random() - 0.5) * 0.38);
-      umapCloudGroup.add(cellDot);
+  var icDiscMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, side: THREE.DoubleSide });
+  [-1.5, 0.1, 1.5].forEach(function(dx) {
+    var d1 = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.05, 20).rotateZ(Math.PI/2), icDiscMat); d1.position.set(dx, 0.66, -0.15);
+    sarcomereGroup.add(d1);
+  });
+
+  var clusterColors = [0xef4444, 0xf97316, 0xfacc15, 0x38bdf8, 0x10b981, 0xec4899, 0xa855f7];
+  var cellDotGeo = new THREE.SphereGeometry(0.04, 8, 8);
+  clusterColors.forEach(function(col, idx) {
+    var cm = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.3 });
+    for (var n = 0; n < 16; n++) {
+      var dot = new THREE.Mesh(cellDotGeo, cm);
+      dot.position.set((idx - 3) * 0.38 + (Math.random() - 0.5) * 0.35, (Math.random() - 0.5) * 0.7, (Math.random() - 0.5) * 0.4);
+      umapCloudGroup.add(dot);
     }
   });
 
-  var rbcGeo = new THREE.SphereGeometry(0.13, 16, 12), rbcMat = new THREE.MeshPhysicalMaterial({ color: 0xdc2626, clearcoat: 0.7 }), rbcList = [];
-  rbcGeo.scale(1.0, 0.38, 1.0);
-  for (var i = 0; i < 28; i++) {
+  var rbcGeo = new THREE.SphereGeometry(0.14, 18, 12), rbcMat = new THREE.MeshPhysicalMaterial({ color: 0xdc2626, clearcoat: 0.7 }), rbcList = [];
+  rbcGeo.scale(1.0, 0.36, 1.0);
+  for (var i = 0; i < 30; i++) {
     var rbc = new THREE.Mesh(rbcGeo, rbcMat);
-    rbc.position.set((Math.random() - 0.5) * 4.5, (Math.random() - 0.5) * 0.35, 0.35);
+    rbc.position.set((Math.random() - 0.5) * 4.6, (Math.random() - 0.5) * 0.38, 0.35);
     mesoGroup.add(rbc); rbcList.push(rbc);
   }
 
-  // SCALE 3 (NANO): drug2cell GPCR/ION-CHANNEL REPERTOIRE (ADRB1, HCN4, RYR2, CaV1.2) & F-ACTIN/MYOSIN
+  // SCALE 3 (NANO): SARCOLEMMA BILAYER, β1-GPCR RIBBON + pLDDT ATOMS, Gs, CaV1.2/RyR2 & ACTIN-MYOSIN
   var pdbAtomGroup = new THREE.Group(); nanoGroup.add(pdbAtomGroup);
   var plddtMats = {
     vh: new THREE.MeshStandardMaterial({ color: 0x0053d6, roughness: 0.22 }),
     hi: new THREE.MeshStandardMaterial({ color: 0x65cbf3, roughness: 0.25 }),
     md: new THREE.MeshStandardMaterial({ color: 0xffdb13, roughness: 0.3 })
   };
-  var ribbonMat = new THREE.MeshPhysicalMaterial({ color: 0x0077ff, clearcoat: 0.8, transparent: true, opacity: 0.72 });
+  var ribbonMat = new THREE.MeshPhysicalMaterial({ color: 0x0077ff, clearcoat: 0.8, transparent: true, opacity: 0.74 });
 
-  var gAlphaMesh = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), new THREE.MeshPhysicalMaterial({ color: 0x10b981, clearcoat: 0.7 })); gAlphaMesh.position.set(-0.38, -0.78, 0.12);
-  var cavChannel = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 1.5, 18, 1, true), new THREE.MeshPhysicalMaterial({ color: 0xa855f7, side: THREE.DoubleSide, transparent: true, opacity: 0.62 })); cavChannel.position.set(1.15, 0.1, 0);
+  var headGeo = new THREE.SphereGeometry(0.05, 8, 8), headMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8 });
+  for (var lx = -1.6; lx <= 1.6; lx += 0.38) {
+    for (var lz = -0.9; lz <= 0.9; lz += 0.38) {
+      if (Math.hypot(lx, lz) < 0.65 || Math.hypot(lx - 1.15, lz) < 0.38) continue;
+      var hTop = new THREE.Mesh(headGeo, headMat); hTop.position.set(lx, 0.85, lz);
+      var hBot = new THREE.Mesh(headGeo, headMat); hBot.position.set(lx, -0.65, lz);
+      nanoGroup.add(hTop, hBot);
+    }
+  }
+  var gAlphaMesh = new THREE.Mesh(new THREE.SphereGeometry(0.21, 14, 14), new THREE.MeshPhysicalMaterial({ color: 0x10b981, clearcoat: 0.7 })); gAlphaMesh.position.set(-0.38, -0.78, 0.12);
+  var cavChannel = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.23, 1.5, 16, 1, true), new THREE.MeshPhysicalMaterial({ color: 0xa855f7, side: THREE.DoubleSide, transparent: true, opacity: 0.62 })); cavChannel.position.set(1.15, 0.1, 0);
   var ryrChannel = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.34, 0.52), new THREE.MeshPhysicalMaterial({ color: 0xf43f5e, transparent: true, opacity: 0.72 })); ryrChannel.position.set(1.15, -1.12, 0);
-  var actinHelixGroup = new THREE.Group(), myosinHeads = [];
-  for (var mh = -1.2; mh <= 1.2; mh += 0.35) {
+  var myosinHeads = [];
+  for (var mh = -1.2; mh <= 1.2; mh += 0.34) {
     var head = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 10), new THREE.MeshStandardMaterial({ color: 0xf87171 })); head.position.set(mh, -1.72, 0);
     nanoGroup.add(head); myosinHeads.push(head);
   }
-  nanoGroup.add(gAlphaMesh, cavChannel, ryrChannel, actinHelixGroup);
+  var actinBar = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.2, 12).rotateZ(Math.PI/2), new THREE.MeshStandardMaterial({ color: 0xfbbf24 })); actinBar.position.set(0, -1.56, 0);
+  nanoGroup.add(gAlphaMesh, cavChannel, ryrChannel, actinBar);
 
   var ionParticles = [], ionMat = new THREE.MeshBasicMaterial({ color: 0x00ff9d }), ionSphereGeo = new THREE.SphereGeometry(0.05, 8, 8);
   for (var k = 0; k < 26; k++) {
@@ -398,11 +492,11 @@
   }
 
   function clearThreeGroup(g) { while (g.children.length > 0) { var c = g.children[0]; g.remove(c); if (c.geometry) c.geometry.dispose(); } }
-  function buildProceduralGPCR(seq) {
+  function buildProceduralGPCR() {
     clearThreeGroup(pdbAtomGroup);
-    var sphereGeo = new THREE.SphereGeometry(0.07, 8, 8);
+    var sphereGeo = new THREE.SphereGeometry(0.068, 8, 8);
     for (var h = 0; h < 7; h++) {
-      var ang = (h / 7) * Math.PI * 2, hx = Math.cos(ang) * 0.46, hz = Math.sin(ang) * 0.46, pts = [];
+      var ang = (h / 7) * Math.PI * 2, hx = Math.cos(ang) * 0.45, hz = Math.sin(ang) * 0.45, pts = [];
       for (var a = 0; a < 16; a++) {
         var pos = new THREE.Vector3(hx + Math.cos(a * 0.55) * 0.12, (h % 2 === 0) ? (-0.8 + a * 0.11) : (0.9 - a * 0.11), hz + Math.sin(a * 0.55) * 0.12);
         pts.push(pos);
@@ -411,51 +505,49 @@
       pdbAtomGroup.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.04, 8, false), ribbonMat));
     }
   }
-  buildProceduralGPCR("");
+  buildProceduralGPCR();
 </script>
 <!-- END OF PART 4 -->
 <!-- START OF PART 5 -->
 <script>
   var twinState = {
-    perturbation_applied: "HCA v2 Resting Baseline",
-    macro_scale: { heart_rate_bpm: 72, systolic_bp_mmHg: 120, diastolic_bp_mmHg: 80, ejection_fraction_pct: 62, stroke_volume_ml: 70, ecg_rhythm_label: "NORMAL SINUS" },
+    macro_scale: { heart_rate_bpm: 72, systolic_bp_mmHg: 120, diastolic_bp_mmHg: 80, ejection_fraction_pct: 62, stroke_volume_ml: 70 },
     meso_scale: { action_potential_frequency_hz: 1.2, capillary_oxygen_saturation_pct: 98, intracellular_calcium_uM: 0.12, particle_flow_velocity: 1.0 },
-    nano_scale: { delta_delta_G_kcal: -9.4, conformational_rmsd_angstrom: 0.4, dissociation_constant_Kd_nM: 45, receptor_occupancy_pct: 15, ion_channel_open_probability: 0.20, molecular_vibration_intensity: 0.5 },
-    voice_narration: "Human Heart Cell Atlas v2 loaded."
+    nano_scale: { delta_delta_G_kcal: -9.4, conformational_rmsd_angstrom: 0.4, receptor_occupancy_pct: 15, ion_channel_open_probability: 0.20, molecular_vibration_intensity: 0.5 }
   };
 
   function selectHcaRegion(code, btnEl) {
-    activeHcaRegion = code;
     var r = HCA_REGIONS[code] || HCA_REGIONS.LV;
     document.querySelectorAll('.hca-chip').forEach(function(b) { b.classList.remove('active'); });
     if (btnEl) btnEl.classList.add('active');
     regionBeacon.position.set(r.pos[0], r.pos[1], r.pos[2]);
     document.getElementById('val-meso').innerText = r.dominant;
     document.getElementById('sub-meso').innerText = r.markers;
-    document.getElementById('sub-nano').innerText = r.drugTarget;
-    document.getElementById('hca-niche-summary').innerHTML = "<b>HCA [" + code + " - " + r.name + "]:</b> " + r.niche;
-    document.getElementById('narration-text').innerHTML = "<b>[Heart Cell Atlas v2 • " + r.name + "]:</b> Dominant population <b>" + r.dominant + "</b> expressing <code>" + r.markers + "</code>. Niche: " + r.niche + ". Druggable targets (drug2cell): <code>" + r.drugTarget + "</code>.";
+    document.getElementById('hca-niche-summary').innerHTML = "<b>HCA [" + code + "]:</b> " + r.niche;
+    document.getElementById('narration-text').innerHTML = "<b>[Heart Cell Atlas v2 • " + r.name + "]:</b> Dominant lineage <b>" + r.dominant + "</b> (<code>" + r.markers + "</code>). Druggable targets: <code>" + r.drugTarget + "</code>.";
     if (code === 'SAN' || code === 'AVN' || code === 'SP') { dissectActive = true; document.getElementById('btn-dissect').classList.add('active'); }
   }
 
   var PRESET_STATES = {
-    normal: { p: "Healthy HCA Baseline", hr: 72, sys: 120, dia: 80, ef: 62, sv: 70, ecg: "NORMAL SINUS", ap: 1.2, spo2: 98, ca: 0.12, ddg: -9.4, rmsd: 0.4, occ: 15, gate: 0.2, msg: "Healthy 8-region Heart Cell Atlas equilibrium across vCM, aCM, SAN P-cells, and resident LYVE1+ macrophages." },
-    epi: { p: "1mg Epinephrine (drug2cell: ADRB1+ vCM & HCN4+ SAN)", hr: 144, sys: 170, dia: 96, ef: 79, sv: 92, ecg: "SINUS TACHYCARDIA", ap: 2.4, spo2: 94, ca: 1.15, ddg: -12.8, rmsd: 2.6, occ: 95, gate: 0.89, msg: "drug2cell maps Epinephrine to ADRB1+ ventricular myocytes and HCN4+/CACNA1D+ SAN pacemaker cells, driving cAMP-PKA phosphorylation of RYR2 and 144 BPM tachycardia." },
-    hypoxia: { p: "Ischemic Myocardial-Stress Niche (vCM3 + POSTN+ FB2)", hr: 116, sys: 86, dia: 56, ef: 34, sv: 42, ecg: "ST-ELEVATION ISCHEMIA", ap: 0.75, spo2: 62, ca: 0.05, ddg: -4.1, rmsd: 3.8, occ: 38, gate: 0.12, msg: "Ischemia expands the HCA ventricular myocardial-stress niche: ANKRD1+/NPPB+ stressed cardiomyocytes and POSTN+/COL1A1+ pro-fibrotic FB2 fibroblasts, dropping EF to 34%." },
-    blocker: { p: "5mg Propranolol (ADRB1 Inverse Agonist)", hr: 52, sys: 102, dia: 66, ef: 56, sv: 64, ecg: "SINUS BRADYCARDIA", ap: 0.85, spo2: 99, ca: 0.07, ddg: -11.2, rmsd: 0.2, occ: 91, gate: 0.07, msg: "Propranolol blocks ADRB1 across vCM1/aCM1 and dampens SAN glutamatergic/adrenergic automaticity, pacing the heart at a protective 52 BPM." }
+    normal: { p: "Healthy HCA Baseline", hr: 72, sys: 120, dia: 80, ef: 62, sv: 70, ecg: "NORMAL SINUS", ap: 1.2, spo2: 98, ca: 0.12, ddg: -9.4, rmsd: 0.4, occ: 15, gate: 0.2, msg: "Physiological resting equilibrium across your 3D .GLB heart, vCM1 syncytium, and Beta-1 GPCR." },
+    epi: { p: "1mg Epinephrine (ADRB1+ vCM & HCN4+ SAN)", hr: 144, sys: 170, dia: 96, ef: 79, sv: 92, ecg: "SINUS TACHYCARDIA", ap: 2.4, spo2: 94, ca: 1.15, ddg: -12.8, rmsd: 2.6, occ: 95, gate: 0.89, msg: "Epinephrine docks to ADRB1 (-12.8 kcal/mol), activating Gs-alpha and CaV1.2/RyR2 calcium release to drive 144 BPM tachycardia." },
+    hypoxia: { p: "Acute LAD Ischemia (vCM3 + POSTN+ FB2)", hr: 116, sys: 86, dia: 56, ef: 34, sv: 42, ecg: "ST-ELEVATION ISCHEMIA", ap: 0.75, spo2: 62, ca: 0.05, ddg: -4.1, rmsd: 3.8, occ: 38, gate: 0.12, msg: "Coronary ischemia drops SpO2 to 62%, expanding stressed ANKRD1+ vCM3 & pro-fibrotic POSTN+ fibroblasts and collapsing EF to 34%." },
+    blocker: { p: "5mg Propranolol (ADRB1 Antagonist)", hr: 52, sys: 102, dia: 66, ef: 56, sv: 64, ecg: "SINUS BRADYCARDIA", ap: 0.85, spo2: 99, ca: 0.07, ddg: -11.2, rmsd: 0.2, occ: 91, gate: 0.07, msg: "Propranolol locks ADRB1 in an inactive 0.2Å state, reducing CaV1.2 opening to 7% and pacing the heart at 52 BPM." }
   };
 
   function applyPreset(k) {
     var s = PRESET_STATES[k] || PRESET_STATES.normal;
-    twinState.macro_scale.heart_rate_bpm = s.hr; twinState.macro_scale.systolic_bp_mmHg = s.sys; twinState.macro_scale.diastolic_bp_mmHg = s.dia; twinState.macro_scale.ejection_fraction_pct = s.ef; twinState.macro_scale.stroke_volume_ml = s.sv; twinState.macro_scale.ecg_rhythm_label = s.ecg;
+    twinState.macro_scale.heart_rate_bpm = s.hr; twinState.macro_scale.systolic_bp_mmHg = s.sys; twinState.macro_scale.diastolic_bp_mmHg = s.dia; twinState.macro_scale.ejection_fraction_pct = s.ef; twinState.macro_scale.stroke_volume_ml = s.sv;
     twinState.meso_scale.action_potential_frequency_hz = s.ap; twinState.meso_scale.capillary_oxygen_saturation_pct = s.spo2; twinState.meso_scale.intracellular_calcium_uM = s.ca; twinState.meso_scale.particle_flow_velocity = s.ap;
     twinState.nano_scale.delta_delta_G_kcal = s.ddg; twinState.nano_scale.conformational_rmsd_angstrom = s.rmsd; twinState.nano_scale.receptor_occupancy_pct = s.occ; twinState.nano_scale.ion_channel_open_probability = s.gate;
     document.getElementById('val-macro').innerText = s.hr + " BPM";
     document.getElementById('sub-macro').innerText = "BP: " + s.sys + "/" + s.dia + " • EF: " + s.ef + "%";
     document.getElementById('val-nano').innerText = "ΔΔG: " + s.ddg + " kcal";
+    document.getElementById('sub-nano').innerText = "Occ: " + s.occ + "% • RMSD: " + s.rmsd + "Å";
     document.getElementById('ecg-status').innerText = s.ecg;
     document.getElementById('pv-status').innerText = "SV: " + s.sv + "mL";
     document.getElementById('narration-text').innerHTML = "<b>[" + s.p + "]:</b> " + s.msg;
+    if ('speechSynthesis' in window) { try { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(s.msg)); } catch (e) {} }
   }
 
   async function foldLiveProtein(customSeq) {
@@ -476,15 +568,17 @@
         clearThreeGroup(pdbAtomGroup);
         var center = new THREE.Vector3(); pts.forEach(function(p) { center.add(p); }); center.divideScalar(pts.length);
         var centered = pts.map(function(p) { return p.clone().sub(center); });
+        var sphereGeo = new THREE.SphereGeometry(0.065, 8, 8);
+        centered.forEach(function(p) { var a = new THREE.Mesh(sphereGeo, plddtMats.vh); a.position.copy(p); pdbAtomGroup.add(a); });
         pdbAtomGroup.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(centered), 120, 0.04, 8, false), ribbonMat));
-        document.getElementById('narration-text').innerHTML = "<b>[🟢 Meta ESMFold 3D Structure Folded]:</b> Rendered " + pts.length + " Cα residues in 3D!";
+        document.getElementById('narration-text').innerHTML = "<b>[🟢 Meta ESMFold Success]:</b> Folded " + pts.length + " Cα residues into 3D atomic coordinates!";
       }
-    } catch (e) { buildProceduralGPCR(seq); }
+    } catch (e) { buildProceduralGPCR(); }
   }
 
   function designDeNovoPeptideAndFold() {
     applyPreset('normal');
-    document.getElementById('narration-text').innerHTML = "<b>[🧬 HCA drug2cell + Meta ESMFold]:</b> Folding de novo allosteric modulator selective for vCM1 ADRB1 & SAN HCN4 without FB2 pro-fibrotic activation...";
+    document.getElementById('narration-text').innerHTML = "<b>[🧬 De Novo Allosteric Modulator + Meta ESMFold]:</b> Folding 75-residue rescue peptide selective for vCM1 ADRB1...";
     foldLiveProtein("MGDGWLPPDCGPHNRSGGGGATAAPTGSRQVSAELLSQQWEAGMSLLMALVVLLIVAGNVLVIAAIGRTQRLQTLTNLFITSLACADLVMGLLVVP");
   }
 
@@ -499,15 +593,16 @@
   async function testAndSaveApiKey() {
     var key = document.getElementById('api-key-input').value.trim(), banner = document.getElementById('api-status-banner');
     if (!key) return;
-    banner.innerHTML = "⏳ Verifying API key...";
+    banner.innerHTML = "⏳ Auto-discovering active models on your key...";
     try {
       var m = await resolveModel("https://api.groq.com/openai/v1/chat/completions", key);
       var res = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: JSON.stringify({ model: m, messages: [{ role: 'user', content: 'OK' }], max_tokens: 4 }) });
       if (!res.ok) throw new Error("Check Key");
-      banner.className = "status-banner ok"; banner.innerHTML = "🟢 Connected to " + m;
+      banner.className = "status-banner ok"; banner.innerHTML = "🟢 Connected: " + m;
       document.getElementById('ai-status-dot').classList.add('online');
       document.getElementById('btn-key').classList.add('key-connected');
-    } catch (e) { banner.innerHTML = "❌ API Error: Check key"; }
+      document.getElementById('btn-key').innerText = "🟢 Live";
+    } catch (e) { banner.innerHTML = "❌ API Error: Verify key"; }
   }
 
   async function runCausalSimulation(qOverride) {
@@ -519,14 +614,14 @@
       var m = await resolveModel("https://api.groq.com/openai/v1/chat/completions", key);
       var res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-        body: JSON.stringify({ model: m, messages: [{ role: 'user', content: 'Using Human Heart Cell Atlas v2 (8 regions: LV, RV, LA, RA, SAN, AVN, SP, AX; drug2cell targets), explain in 2 sentences the multi-scale effect of: ' + q + ' and output JSON {"hr":128,"sys":150,"dia":90,"ef":70,"sv":84,"ddg":-11.8,"msg":"explanation"}' }] })
+        body: JSON.stringify({ model: m, messages: [{ role: 'user', content: 'Output ONLY valid JSON {"hr":132,"sys":155,"dia":92,"ef":72,"sv":86,"ddg":-12.1,"msg":"2-sentence Nano->Meso->Macro mechanism"} for cardiac perturbation: ' + q }] })
       });
       var d = await res.json(), txt = d.choices[0].message.content, match = txt.match(/\{[\s\S]*\}/);
       if (match) {
         var j = JSON.parse(match[0]);
         applyPreset('epi');
         if (j.hr) { twinState.macro_scale.heart_rate_bpm = j.hr; document.getElementById('val-macro').innerText = j.hr + " BPM"; }
-        if (j.msg) document.getElementById('narration-text').innerHTML = "<b>[⚡ HCA drug2cell AI]:</b> " + j.msg;
+        if (j.msg) document.getElementById('narration-text').innerHTML = "<b>[⚡ Live AI Simulation]:</b> " + j.msg;
       }
     } catch (e) { applyPreset('epi'); }
   }
@@ -536,45 +631,100 @@
   function setZoomSmooth(v) { targetZoom = Math.max(1.0, Math.min(3.0, v)); zoomSlider.value = targetZoom; }
   function stepZoom(d) { setZoomSmooth(Math.round((targetZoom + d) * 20) / 20); }
   function toggleDissection() { dissectActive = !dissectActive; document.getElementById('btn-dissect').classList.toggle('active', dissectActive); }
-  function toggleLabels() { showLabels = !showLabels; document.getElementById('btn-labels').classList.toggle('active', showLabels); }
+  function toggleLabels() { showLabels = !showLabels; document.getElementById('btn-labels').classList.toggle('active', showLabels); if (!showLabels) pinDomElements.forEach(function(it) { it.el.style.display = 'none'; }); }
   function toggleModal() { var m = document.getElementById('api-modal'); m.style.display = m.style.display === 'flex' ? 'none' : 'flex'; }
-  function toggleARPassthrough() { navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function(s) { var v = document.getElementById('ar-video'); v.srcObject = s; v.style.display = 'block'; }).catch(function() {}); }
-  function scanPhysicalObjectWithVision() { applyPreset('hypoxia'); }
+  function toggleARPassthrough() { navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function(s) { var v = document.getElementById('ar-video'); v.srcObject = s; v.style.display = 'block'; document.getElementById('sam-reticle').style.display = 'block'; }).catch(function() {}); }
+  function scanPhysicalObjectWithVision() { toggleARPassthrough(); setTimeout(function() { applyPreset('hypoxia'); }, 1200); }
   function startVoiceCommand() { var S = window.SpeechRecognition || window.webkitSpeechRecognition; if (S) { var r = new S(); r.onresult = function(e) { runCausalSimulation(e.results[0][0].transcript); }; r.start(); } }
-  function triggerJudgeAutoDemo() { setZoomSmooth(1.0); setTimeout(function() { toggleDissection(); }, 2500); setTimeout(function() { setZoomSmooth(2.0); }, 5500); setTimeout(function() { designDeNovoPeptideAndFold(); }, 9000); }
+  function triggerJudgeAutoDemo() { setZoomSmooth(1.0); setTimeout(function() { toggleDissection(); }, 2800); setTimeout(function() { dissectActive = false; setZoomSmooth(2.0); }, 6000); setTimeout(function() { designDeNovoPeptideAndFold(); }, 9500); }
 
-  var isDragging = false, prevX = 0, prevY = 0;
-  canvas.addEventListener('touchstart', function(e) { if (e.touches.length === 1) { isDragging = true; prevX = e.touches[0].clientX; prevY = e.touches[0].clientY; } }, { passive: true });
-  canvas.addEventListener('touchmove', function(e) { if (isDragging && e.touches.length === 1) { worldRoot.rotation.y += (e.touches[0].clientX - prevX) * 0.008; worldRoot.rotation.x += (e.touches[0].clientY - prevY) * 0.008; prevX = e.touches[0].clientX; prevY = e.touches[0].clientY; } }, { passive: true });
-  canvas.addEventListener('touchend', function() { isDragging = false; });
+  var isDragging = false, prevX = 0, prevY = 0, initDist = null, initZoom = 1.0;
+  canvas.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 1) { isDragging = true; prevX = e.touches[0].clientX; prevY = e.touches[0].clientY; }
+    else if (e.touches.length === 2) { isDragging = false; initDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); initZoom = targetZoom; }
+  }, { passive: true });
+  canvas.addEventListener('touchmove', function(e) {
+    if (e.touches.length === 1 && isDragging) {
+      worldRoot.rotation.y += (e.touches[0].clientX - prevX) * 0.008;
+      worldRoot.rotation.x = Math.max(-1.1, Math.min(1.1, worldRoot.rotation.x + (e.touches[0].clientY - prevY) * 0.008));
+      prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
+    } else if (e.touches.length === 2 && initDist) {
+      setZoomSmooth(initZoom + (Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) - initDist) * 0.0065);
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchend', function() { isDragging = false; initDist = null; });
 
   var ecgCanvas = document.getElementById('ecg-canvas'), ecgCtx = ecgCanvas.getContext('2d'), pvCanvas = document.getElementById('pv-canvas'), pvCtx = pvCanvas.getContext('2d'), bioPhase = 0, clock = new THREE.Clock();
   renderer.setAnimationLoop(function() {
     var dt = Math.min(clock.getDelta(), 0.1), t = clock.getElapsedTime();
     zoomLevel += (targetZoom - zoomLevel) * 0.12;
     document.getElementById('zoom-readout').innerText = zoomLevel.toFixed(2) + 'x';
-    dissectPlane.constant += ((dissectActive ? 0.08 : 5.0) - dissectPlane.constant) * 0.15;
+    document.getElementById('card-macro').classList.toggle('active-scale', zoomLevel < 1.68);
+    document.getElementById('card-meso').classList.toggle('active-scale', zoomLevel >= 1.68 && zoomLevel < 2.4);
+    document.getElementById('card-nano').classList.toggle('active-scale', zoomLevel >= 2.4);
+
+    var isCutaway = dissectActive || (zoomLevel >= 1.25 && zoomLevel < 1.68);
+    dissectPlane.constant += ((isCutaway ? 0.06 : 5.0) - dissectPlane.constant) * 0.15;
+
     macroGroup.visible = zoomLevel < 1.72; macroGroup.scale.setScalar(Math.pow(1.45, zoomLevel - 1.0));
-    mesoGroup.visible = (zoomLevel >= 1.68 && zoomLevel < 2.42);
-    nanoGroup.visible = zoomLevel >= 2.38;
+    mesoGroup.visible = (zoomLevel >= 1.68 && zoomLevel < 2.42); mesoGroup.scale.setScalar(Math.max(0.01, Math.pow(1.8, zoomLevel - 2.0)));
+    nanoGroup.visible = zoomLevel >= 2.38; nanoGroup.scale.setScalar(Math.max(0.01, Math.pow(1.8, zoomLevel - 3.0)));
 
     var hr = twinState.macro_scale.heart_rate_bpm || 72, pulseFreq = (hr / 60) * Math.PI * 2;
     var ventWave = Math.pow(Math.max(0, Math.sin(t * pulseFreq)), 3);
-    var vC = 1.0 - ventWave * 0.09, vE = 1.0 + ventWave * 0.045;
-    ventricleBeatGroup.scale.set(vC, vE, vC); nihGlbGroup.scale.set(vC, vE, vC);
-    conductionPulseDot.position.copy(lbbCurve.getPoint((t * hr / 60) % 1.0));
-    umapCloudGroup.rotation.y += dt * 0.18; pdbAtomGroup.rotation.y += dt * 0.35;
+    var vC = 1.0 - ventWave * 0.085, vE = 1.0 + ventWave * 0.045;
+    ventricleBeatGroup.scale.set(vC, vE, vC);
+    userGlbGroup.scale.set(vC, vE, vC);
+    if (glbMixer) glbMixer.update(dt * (hr / 72));
+
+    var avOpen = (1.0 - ventWave) * 0.6;
+    mitralAntCusp.rotation.x = avOpen; mitralPostCusp.rotation.x = -avOpen;
+    tricuspidCusp1.rotation.x = avOpen; tricuspidCusp2.rotation.x = -avOpen;
+    var condT = (t * hr / 60) % 1.0;
+    conductionPulseDot.position.copy(lbbCurve.getPoint(condT));
+    conductionPulseDot2.position.copy(rbbCurve.getPoint(condT));
+
+    sarcomereGroup.scale.x = 1.0 - ventWave * 0.08;
+    rbcList.forEach(function(r) { r.position.x += dt * 1.6; if (r.position.x > 2.3) r.position.x = -2.3; });
+    pdbAtomGroup.rotation.y += dt * 0.35;
+    myosinHeads.forEach(function(mh, idx) { mh.rotation.z = Math.sin(t * pulseFreq + idx * 0.4) * 0.45; });
+    ionParticles.forEach(function(ion) { ion.position.y -= dt * 1.4; if (ion.position.y < -1.6) ion.position.y = 1.5; });
 
     bioPhase = (bioPhase + dt * pulseFreq) % (Math.PI * 2);
-    ecgCtx.clearRect(0, 0, 220, 28); ecgCtx.strokeStyle = '#00ff9d'; ecgCtx.lineWidth = 1.5; ecgCtx.beginPath();
+    ecgCtx.clearRect(0, 0, 220, 28); ecgCtx.strokeStyle = hr > 125 ? '#ff2a85' : '#00ff9d'; ecgCtx.lineWidth = 1.5; ecgCtx.beginPath();
     for (var x = 0; x < 220; x++) {
       var th = ((x * 0.065) + bioPhase) % (Math.PI * 2);
       var y = 19 - (0.18 * Math.exp(-Math.pow(th - 1.2, 2) / 0.08) + Math.exp(-Math.pow(th - 2.4, 2) / 0.012) + 0.3 * Math.exp(-Math.pow(th - 3.8, 2) / 0.14)) * 13;
       if (x === 0) ecgCtx.moveTo(x, y); else ecgCtx.lineTo(x, y);
     }
     ecgCtx.stroke();
-    pvCtx.clearRect(0, 0, 150, 28); pvCtx.strokeStyle = '#00f0ff'; pvCtx.strokeRect(45, 5, 55, 18);
+
+    pvCtx.clearRect(0, 0, 150, 28); pvCtx.strokeStyle = '#00f0ff'; pvCtx.fillStyle = 'rgba(0,240,255,0.12)'; pvCtx.lineWidth = 1.5; pvCtx.beginPath();
+    for (var a = 0; a <= Math.PI * 2; a += 0.2) {
+      var px = 75 + Math.cos(a) * 28, py = 14 - Math.sin(a) * 9;
+      if (a === 0) pvCtx.moveTo(px, py); else pvCtx.lineTo(px, py);
+    }
+    pvCtx.closePath(); pvCtx.fill(); pvCtx.stroke();
+
+    if (showLabels) {
+      var activeMode = zoomLevel < 1.68 ? (isCutaway ? 'int' : 'ext') : (zoomLevel < 2.40 ? 'meso' : 'nano');
+      var w = window.innerWidth, h = window.innerHeight;
+      var grp = (activeMode === 'ext' || activeMode === 'int') ? macroGroup : (activeMode === 'meso' ? mesoGroup : nanoGroup);
+      pinDomElements.forEach(function(item) {
+        if (item.data.mode !== activeMode) { item.el.style.display = 'none'; return; }
+        var v = new THREE.Vector3(item.data.pos[0], item.data.pos[1], item.data.pos[2]).applyMatrix4(grp.matrixWorld).project(camera);
+        var sx = (v.x * 0.5 + 0.5) * w, sy = (-(v.y * 0.5) + 0.5) * h;
+        if (v.z > 1 || sy < 160 || sy > h - 130 || sx < 20 || sx > w - 45) { item.el.style.display = 'none'; return; }
+        item.el.style.display = 'block'; item.el.style.left = sx + 'px'; item.el.style.top = sy + 'px';
+      });
+    }
     renderer.render(scene, camera);
+  });
+
+  window.addEventListener('resize', function() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
   });
 </script>
 </body>
